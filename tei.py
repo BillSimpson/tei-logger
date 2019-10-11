@@ -15,6 +15,12 @@
 # for the SO2 monitor (43c) = 0xAB
 # for the CO monitor (48c) = 0xB0
 # for the TEI 49C = 0xB1
+# 
+# note that I found sending commands too rapidly can cause the
+# analyzer to not respond.  I found that with a delay of 0.2 seconds
+# nearly all the time it worked, so I made the command_delay = 0.5 seconds
+
+command_delay = 0.5 
 
 import serial
 from serial.tools.list_ports import comports
@@ -22,7 +28,9 @@ import time
 
 # low level commands  
 def send_command(ser,iid,str):
-    time.sleep(0.2)  # needed to wait to get the analyzer ready to respond again
+    # wait for the "command delay" time, which is the time
+    # needed to wait to get the analyzer ready to respond again
+    time.sleep(command_delay)  
     inst_msg = chr(iid) + str + '\r'
     ser.write(inst_msg.encode())
 
@@ -38,6 +46,7 @@ def parse_response(command,response):
     except:
         return(float('NaN'))
 
+# driver class
 class TEInst:
 
     def __init__(self, instrumentID):

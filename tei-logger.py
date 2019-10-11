@@ -9,6 +9,7 @@
 import tei
 import time
 import datetime
+import os
 
 # control variables
 write_interval_secs = 30 # will write a data line about this often
@@ -17,6 +18,13 @@ time_exception_secs = 100 # if time shifts more than this, there will
 # be a time exception and a new file will begin
 
 flush_interval_secs = 75 # this is how often the file actually writes to disk
+
+# newfile file path: if you "touch" this filename, the program will close the
+# current file
+newfile_path = os.path.expanduser('~/new_file')
+
+# put the output into the report directory
+reppath = os.path.expanduser('~/rep/')
 
 # set time format for datetime string in file
 timeformat = '%Y-%m-%d %H:%M:%S'
@@ -66,7 +74,7 @@ while True:
     # write some new data
     if not outfile_open:
         outfilename = datetime.datetime.now().strftime('tei-log-%Y%m%dT%H%M%S.txt')
-        outfile = open(outfilename,'w')
+        outfile = open(os.path.join(reppath, outfilename), 'w')
         # write the header line
         outfile.write('\t'.join(headernames)+'\n')
         outfile_open = True
@@ -100,10 +108,14 @@ while True:
         outfile.close()
         outfile_open = False
     else:
-        # if date changes, close the old file and let a new one open
-        if last_dt.date() < curr_dt.date():
-            outfile.close()
-            outfile_open = False
+       # if a new file is requested, do that
+       newfile_request = os.path.exists(newfile_path) and os.path.isfile(newfile_path)
+       # if date changes, close the old file and let a new one open
+       if newfile_request or last_dt.date() < curr_dt.date():
+           outfile.close()
+           outfile_open = False
+           if newfile_request:
+               os.remove(newfile_path)
 
     # set last_dt from current write time
     last_dt = curr_dt
@@ -113,5 +125,8 @@ while True:
     # check if we should flush (write the file to disk)
     secs_since_flush = time.monotonic() - lastflush_monotonic
     if secs_since_flush > flush_interval_secs:
-        outfile.flush()
-        lastflush_monotonic = time.monotonic() 
+        try:
+            outfile.flush()
+            lastflush_monotonic = time.monotonic()
+        except:
+            outfile_open = False
